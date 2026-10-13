@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kultivar — Cultiva energía en Solana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+<script>
+tailwind.config = { theme: { extend: { fontFamily: { display: ['"Baloo 2"', 'system-ui', 'sans-serif'], body: ['Nunito', 'system-ui', 'sans-serif'] } } } };
+</script>
+<style>
+:root{
+  color-scheme: dark;
+  --moss:#12301e; --moss-2:#1c4a2d; --soil:#3a2616; --soil-2:#5b3c23;
+  --leaf:#7fd44e; --sun:#f7c948; --bone:#f4f0df; --muted:#a9c2ab;
+  --water:#4aa3f0; --danger:#ff7a59;
+  --r-comun:#a7c4a4; --r-rara:#5aa9ff; --r-epica:#bb82ff; --r-legendaria:#ffc93c;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0; min-height:100%; color:var(--bone); font-family:Nunito,system-ui,sans-serif;
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(247,201,72,.14), transparent 60%),
+    radial-gradient(900px 600px at -10% 20%, rgba(127,212,78,.12), transparent 60%),
+    linear-gradient(180deg,#143623 0%,#0d2316 100%);
+  background-color:#0d2316;
+}
+h1,h2,h3,.font-display{font-family:"Baloo 2",system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--sun); outline-offset:2px; border-radius:8px}
+
+.panel{background:rgba(8,26,15,.72); border:1px solid rgba(255,255,255,.1); border-radius:1.25rem}
+.chip{display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .75rem; border-radius:999px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); font-weight:700; font-size:.9rem; white-space:nowrap}
+.chip small{font-weight:600; color:var(--muted)}
+.dot{width:.5rem; height:.5rem; border-radius:50%; background:var(--sun); display:inline-block}
+.dot.live{background:var(--leaf)}
+
+.btn{font-family:"Baloo 2",system-ui,sans-serif; font-weight:700; font-size:.98rem; line-height:1.1; padding:.55rem 1rem; border-radius:999px; border:0; cursor:pointer; display:inline-flex; gap:.4rem; align-items:center; justify-content:center; transition:transform .08s, box-shadow .08s, filter .15s; text-decoration:none; color:inherit}
+.btn:active:not([disabled]){transform:translateY(2px)}
+.btn[disabled],.btn.off{opacity:.45; cursor:not-allowed; filter:grayscale(.5)}
+.btn-leaf{background:linear-gradient(#92e662,#4ea32e); color:#0e2a10; box-shadow:0 3px 0 #2c6a1b}
+.btn-leaf:active:not([disabled]){box-shadow:0 1px 0 #2c6a1b}
+.btn-sun{background:linear-gradient(#ffdc70,#e6a712); color:#3a2500; box-shadow:0 3px 0 #96650a}
+.btn-sun:active:not([disabled]){box-shadow:0 1px 0 #96650a}
+.btn-water{background:linear-gradient(#85ccff,#3a8ed8); color:#05223d; box-shadow:0 3px 0 #1d5a93}
+.btn-water:active:not([disabled]){box-shadow:0 1px 0 #1d5a93}
+.btn-ghost{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2); color:var(--bone)}
+.btn-ghost:hover:not([disabled]){background:rgba(255,255,255,.14)}
+.btn-sm{padding:.4rem .75rem; font-size:.88rem}
+
+.tab{font-family:"Baloo 2",system-ui,sans-serif; font-weight:700; padding:.5rem 1rem; border-radius:999px; background:transparent; border:0; color:var(--muted); cursor:pointer; white-space:nowrap}
+.tab:hover{color:var(--bone)}
+.tab[aria-selected="true"]{background:var(--leaf); color:#0e2a10}
+
+.logo-text{background:linear-gradient(90deg,#8ae85a 0%,#d8e24a 55%,#ffc93c 100%); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; letter-spacing:.01em}
+
+/* Parcelas */
+.plot{position:relative; border-radius:1.1rem; padding:.7rem; min-height:15.5rem; display:flex; flex-direction:column; gap:.45rem; align-items:center; justify-content:flex-end; text-align:center; overflow:hidden;
+  background:repeating-linear-gradient(90deg, rgba(0,0,0,.2) 0 7px, transparent 7px 24px), linear-gradient(var(--soil-2), var(--soil));
+  border:3px solid #2a1a0e; box-shadow:inset 0 0 0 2px rgba(255,255,255,.06), 0 6px 0 #1f1209}
+.plot.locked{background:repeating-linear-gradient(45deg,#2b2f2b 0 10px,#252925 10px 20px); justify-content:center; color:var(--muted)}
+.plot.empty{justify-content:center}
+.plot.ready{box-shadow:inset 0 0 0 2px rgba(255,255,255,.06), 0 0 0 3px var(--sun), 0 0 26px rgba(247,201,72,.55), 0 6px 0 #1f1209}
+.plant{font-size:4.2rem; line-height:1; margin-top:1.6rem; transform-origin:50% 100%; animation:sway 3.2s ease-in-out infinite}
+.plant.s0{font-size:2.6rem; margin-top:3rem} .plant.s1{font-size:3.4rem; margin-top:2rem}
+.plant.el-fuego{filter:drop-shadow(0 0 10px #ff6a1a)} .plant.el-agua{filter:drop-shadow(0 0 10px #5fd4ff)}
+.plant.el-oscuridad{filter:drop-shadow(0 0 10px #9b5cff)} .plant.el-luz{filter:drop-shadow(0 0 10px #ffe066)}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+.pest{position:absolute; top:.5rem; right:.5rem; font-size:1.7rem; animation:wob .6s ease-in-out infinite alternate; background:rgba(0,0,0,.35); border-radius:999px; padding:.1rem .4rem}
+@keyframes wob{from{transform:translate(-3px,0) rotate(-8deg)}to{transform:translate(3px,-3px) rotate(8deg)}}
+.bar{height:.55rem; border-radius:99px; background:rgba(0,0,0,.4); overflow:hidden; width:100%}
+.bar>i{display:block; height:100%; border-radius:99px; transition:width .9s linear}
+.bar.g>i{background:linear-gradient(90deg,#7fd44e,#c6e65b)} .bar.w>i{background:linear-gradient(90deg,#3a8ed8,#7fcaff)}
+.float{position:absolute; left:50%; top:35%; font-family:"Baloo 2"; font-weight:800; font-size:1.5rem; color:var(--sun); text-shadow:0 2px 0 #5a3b00; transform:translateX(-50%); animation:floatUp 1.3s ease-out forwards; pointer-events:none}
+@keyframes floatUp{to{transform:translate(-50%,-70px); opacity:0}}
+.ready-pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 3px 0 #96650a, 0 0 18px rgba(247,201,72,.9)}}
+
+/* Rarezas */
+.r-comun{--rc:var(--r-comun)} .r-rara{--rc:var(--r-rara)} .r-epica{--rc:var(--r-epica)} .r-legendaria{--rc:var(--r-legendaria)}
+.rar{color:var(--rc); border:1px solid var(--rc); border-radius:999px; padding:.05rem .55rem; font-size:.78rem; font-weight:800}
+.card{border-radius:1.1rem; border:2px solid var(--rc,rgba(255,255,255,.12)); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.2)); padding:1rem}
+.card.r-legendaria{box-shadow:0 0 22px rgba(255,201,60,.25)}
+
+/* Hero */
+.hero-tile{width:100%; aspect-ratio:1/1; border-radius:1.2rem; display:flex; align-items:flex-end; justify-content:center; padding-bottom:.6rem; font-size:4rem;
+  background:repeating-linear-gradient(90deg, rgba(0,0,0,.2) 0 7px, transparent 7px 24px), linear-gradient(var(--soil-2), var(--soil)); border:3px solid #2a1a0e; box-shadow:0 6px 0 #1f1209}
+.hero-tile span{display:block; animation:sway 3s ease-in-out infinite; transform-origin:50% 100%}
+
+.modal-back{position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:1rem; z-index:60}
+.modal-back.open{display:flex}
+.modal{background:#10281a; border:1px solid rgba(255,255,255,.18); border-radius:1.4rem; padding:1.25rem; width:100%; max-width:34rem; max-height:88vh; overflow:auto}
+.input{width:100%; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.2); color:var(--bone); border-radius:.8rem; padding:.55rem .8rem; font-size:1rem; font-family:inherit}
+.input::placeholder{color:#7f9a83}
+label.lbl{display:block; font-weight:700; font-size:.9rem; margin-bottom:.25rem; color:var(--muted)}
+.shake{animation:shake .5s linear infinite}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+.bump{animation:bump .4s}
+@keyframes bump{40%{transform:scale(1.18)}}
+.toast{background:#0b1f12; border:1px solid var(--leaf); color:var(--bone); padding:.6rem 1rem; border-radius:999px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:toastIn .25s}
+.toast.err{border-color:var(--danger)}
+@keyframes toastIn{from{transform:translateY(10px); opacity:0}}
+.scroll-x{overflow-x:auto; -webkit-overflow-scrolling:touch}
+.scroll-x::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+</head>
+<body class="font-body">
+
+<!-- ============ HEADER ============ -->
+<header class="sticky top-0 z-40 backdrop-blur" style="background:rgba(10,30,18,.88); border-bottom:1px solid rgba(255,255,255,.1); padding-top:env(safe-area-inset-top,0px)">
+  <div class="max-w-6xl mx-auto px-3 pt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <a href="#" onclick="showTab('home');return false" class="flex items-center gap-2" aria-label="Kultivar, ir al inicio">
+      <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8ae85a"/><stop offset="1" stop-color="#ffc93c"/></linearGradient></defs><path d="M20 36V18" stroke="#4ea32e" stroke-width="3" stroke-linecap="round"/><path d="M20 20C8 20 5 11 6 5c9 0 14 4 14 15Z" fill="url(#lg)"/><path d="M20 24c10 0 14-7 14-13-9-1-14 3-14 13Z" fill="url(#lg)" opacity=".85"/></svg>
+      <span class="logo-text font-display text-3xl leading-none">Kultivar</span>
+    </a>
+
+    <div class="flex flex-wrap items-center gap-2 ml-auto" aria-live="polite">
+      <span class="chip" title="Saldo de $KULT"><span aria-hidden="true">🪙</span><span id="balKult">0</span><small>$KULT</small><span id="dotKult" class="dot" title="Modo demo"></span></span>
+      <span class="chip" title="Energía acumulada en el juego"><span aria-hidden="true">⚡</span><span id="balEnergy">0</span><small>KULT-Energy</small></span>
+      <span class="chip" title="Saldo de SOL"><span aria-hidden="true">◎</span><span id="balSol">0</span><small>SOL</small></span>
+      <button class="btn btn-sun btn-sm" id="walletBtn" onclick="onWalletClick()">Conectar wallet</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()" aria-label="Configuración">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Contrato / CA -->
+  <div class="max-w-6xl mx-auto px-3 pt-2" id="caStrip"></div>
+
+  <nav class="max-w-6xl mx-auto px-3 py-2 scroll-x flex gap-1" role="tablist" aria-label="Secciones" id="tabs"></nav>
+</header>
+
+<main class="max-w-6xl mx-auto px-3 py-6">
+
+  <!-- ============ INICIO (LANDING) ============ -->
+  <section id="tab-home" role="tabpanel" hidden>
+    <div class="grid md:grid-cols-2 gap-8 items-center py-6">
+      <div>
+        <h1 class="font-display font-extrabold text-5xl sm:text-6xl leading-[1.02]">Siembra, riega y cosecha energía en Solana.</h1>
+        <p class="mt-4 text-lg text-[var(--muted)] max-w-prose">Kultivar es un juego de granja play-to-earn. Planta semillas, protégelas de cuervos y gusanos, y cambia tu KULT-Energy por $KULT.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button class="btn btn-leaf" style="font-size:1.15rem; padding:.75rem 1.5rem" onclick="showTab('farm')">Jugar ahora</button>
+          <a class="btn btn-sun" style="font-size:1.15rem; padding:.75rem 1.5rem" id="buyHero" href="#" target="_blank" rel="noopener noreferrer">Comprar $KULT</a>
+          <button class="btn btn-ghost" style="font-size:1.05rem" onclick="showTab('dex')">Ver las plantas</button>
+        </div>
+        <p class="mt-4 text-sm text-[var(--muted)]">Estás en el modo demo: empiezas con $KULT de prueba y tu progreso se guarda en este navegador.</p>
+      </div>
+      <div class="grid grid-cols-3 gap-3" aria-hidden="true">
+        <div class="hero-tile"><span>🌻</span></div>
+        <div class="hero-tile" style="margin-top:1.5rem"><span style="animation-delay:-1s;filter:drop-shadow(0 0 10px #ff6a1a)">🌺</span></div>
+        <div class="hero-tile"><span style="animation-delay:-2s;filter:drop-shadow(0 0 10px #5fd4ff)">🪻</span></div>
+        <div class="hero-tile" style="margin-top:-1.5rem"><span style="animation-delay:-.5s;filter:drop-shadow(0 0 10px #9b5cff)">🥀</span></div>
+        <div class="hero-tile"><span style="animation-delay:-1.5s">🌳</span></div>
+        <div class="hero-tile" style="font-size:2.6rem"><span style="animation-delay:-2.5s">🌱</span></div>
+      </div>
+    </div>
+
+    <h2 class="font-display font-bold text-3xl mt-10 mb-4">Cómo se juega</h2>
+    <ol class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 list-none p-0 m-0">
+      <li class="panel p-4"><div class="text-3xl" aria-hidden="true">1️⃣</div><h3 class="font-display font-bold text-xl mt-1">Consigue $KULT y conecta</h3><p class="text-[var(--muted)] mt-1">Compra el token en Pump.fun y conecta tu wallet Phantom.</p></li>
+      <li class="panel p-4"><div class="text-3xl" aria-hidden="true">2️⃣</div><h3 class="font-display font-bold text-xl mt-1">Equipa tu granja</h3><p class="text-[var(--muted)] mt-1">En la tienda compra macetas, agua, espantapájaros y semillas.</p></li>
+      <li class="panel p-4"><div class="text-3xl" aria-hidden="true">3️⃣</div><h3 class="font-display font-bold text-xl mt-1">Cuida tus plantas</h3><p class="text-[var(--muted)] mt-1">Riega a tiempo y espanta las plagas para no perder producción.</p></li>
+      <li class="panel p-4"><div class="text-3xl" aria-hidden="true">4️⃣</div><h3 class="font-display font-bold text-xl mt-1">Cosecha y retira</h3><p class="text-[var(--muted)] mt-1">Convierte tu KULT-Energy en $KULT desde la pestaña Banco.</p></li>
+    </ol>
+
+    <h2 class="font-display font-bold text-3xl mt-12 mb-4">Gráfico del token</h2>
+    <div id="chartHome"></div>
+  </section>
+
+  <!-- ============ MI GRANJA ============ -->
+  <section id="tab-farm" role="tabpanel" hidden>
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+      <div>
+        <h2 class="font-display font-bold text-3xl">Mi granja</h2>
+        <p class="text-[var(--muted)]">Toca una parcela vacía para sembrar. El agua y las plagas deciden cuánto rinde cada planta.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn btn-water btn-sm" onclick="waterAll()">💧 Regar todo</button>
+        <button class="btn btn-sun btn-sm" onclick="harvestAll()">⚡ Cosechar todo</button>
+      </div>
+    </div>
+    <div class="grid lg:grid-cols-[1fr_16rem] gap-5">
+      <div id="farmGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+      <aside class="panel p-4 h-fit">
+        <h3 class="font-display font-bold text-xl mb-2">Tu mochila rápida</h3>
+        <ul id="quickInv" class="space-y-1 text-[var(--bone)]"></ul>
+        <button class="btn btn-leaf btn-sm mt-3 w-full" onclick="showTab('shop')">Ir a la tienda</button>
+        <p class="text-xs text-[var(--muted)] mt-3">Los tiempos de cultivo están acelerados para la demo.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ TIENDA ============ -->
+  <section id="tab-shop" role="tabpanel" hidden>
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+      <div>
+        <h2 class="font-display font-bold text-3xl">Tienda</h2>
+        <p class="text-[var(--muted)]">Todo lo que necesita tu granja. Elige con qué moneda pagar.</p>
+      </div>
+      <div class="flex gap-1 panel p-1" role="group" aria-label="Moneda de pago">
+        <button class="btn btn-sm" id="curKULT" onclick="setCurrency('KULT')">🪙 $KULT</button>
+        <button class="btn btn-sm" id="curSOL" onclick="setCurrency('SOL')">◎ SOL</button>
+      </div>
+    </div>
+
+    <h3 class="font-display font-bold text-2xl mb-2">Insumos</h3>
+    <div id="shopSupplies" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+    <h3 class="font-display font-bold text-2xl mt-8 mb-2">Caja sorpresa</h3>
+    <div id="shopBox"></div>
+
+    <h3 class="font-display font-bold text-2xl mt-8 mb-2">Semillas NFT</h3>
+    <div id="shopSeeds" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    <p class="text-sm text-[var(--muted)] mt-3">Noctis Vine no se vende: solo sale de las Sun Box.</p>
+  </section>
+
+  <!-- ============ KULTIVARDEX ============ -->
+  <section id="tab-dex" role="tabpanel" hidden>
+    <h2 class="font-display font-bold text-3xl">Kultivardex</h2>
+    <p class="text-[var(--muted)] mb-3">Guía de todas las plantas. Las barras comparan cada estadística con la mejor de la lista.</p>
+    <div id="dexFilters" class="flex flex-wrap gap-2 mb-4"></div>
+    <div id="dexGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </section>
+
+  <!-- ============ BANCO ============ -->
+  <section id="tab-bank" role="tabpanel" hidden>
+    <h2 class="font-display font-bold text-3xl">Banco</h2>
+    <p class="text-[var(--muted)] mb-4" id="rateLine"></p>
+    <div class="grid md:grid-cols-2 gap-5">
+      <div class="panel p-5">
+        <h3 class="font-display font-bold text-2xl">Depositar</h3>
+        <p class="text-[var(--muted)] mb-3">Convierte $KULT en KULT-Energy.</p>
+        <label class="lbl" for="depAmt">Cantidad de $KULT</label>
+        <div class="flex gap-2"><input id="depAmt" class="input" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><button class="btn btn-ghost btn-sm" onclick="maxDeposit()">Máx.</button></div>
+        <p class="mt-2">Recibes: <b id="depOut">0</b> ⚡</p>
+        <button class="btn btn-leaf mt-3 w-full" onclick="doDeposit()">Depositar</button>
+      </div>
+      <div class="panel p-5">
+        <h3 class="font-display font-bold text-2xl">Retirar</h3>
+        <p class="text-[var(--muted)] mb-3">Convierte KULT-Energy de vuelta en $KULT.</p>
+        <label class="lbl" for="witAmt">Cantidad de KULT-Energy</label>
+        <div class="flex gap-2"><input id="witAmt" class="input" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><button class="btn btn-ghost btn-sm" onclick="maxWithdraw()">Máx.</button></div>
+        <p class="mt-2">Recibes: <b id="witOut">0</b> $KULT <span class="text-[var(--muted)] text-sm" id="witFee"></span></p>
+        <button class="btn btn-sun mt-3 w-full" onclick="doWithdraw()">Retirar a mi wallet</button>
+      </div>
+    </div>
+
+    <div class="panel p-5 mt-5">
+      <h3 class="font-display font-bold text-xl mb-2">Movimientos recientes</h3>
+      <ul id="logList" class="space-y-1 text-[var(--muted)]"></ul>
+    </div>
+
+    <h3 class="font-display font-bold text-2xl mt-8 mb-3">Gráfico del token</h3>
+    <div id="chartBank"></div>
+  </section>
+
+  <!-- ============ INVENTARIO ============ -->
+  <section id="tab-inv" role="tabpanel" hidden>
+    <h2 class="font-display font-bold text-3xl">Inventario</h2>
+    <p class="text-[var(--muted)] mb-4">Todo lo que llevas en la mochila.</p>
+    <div id="invTools" class="grid sm:grid-cols-3 gap-4"></div>
+    <h3 class="font-display font-bold text-2xl mt-8 mb-2">Semillas sin plantar</h3>
+    <div id="invSeeds" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <h3 class="font-display font-bold text-2xl mt-8 mb-2">Tu progreso</h3>
+    <div id="invStats" class="grid sm:grid-cols-3 gap-4"></div>
+  </section>
+</main>
+
+<footer class="max-w-6xl mx-auto px-3 pb-10 pt-4 text-sm text-[var(--muted)]">
+  <p>Kultivar es un juego experimental. Los tokens pueden perder valor y nada aquí es asesoría financiera. Juega solo con lo que puedas permitirte perder.</p>
+</footer>
+
+<!-- Modal + toasts -->
+<div id="modal" class="modal-back" role="dialog" aria-modal="true"><div class="modal" id="modalBody"></div></div>
+<div id="toasts" class="fixed left-0 right-0 z-[70] flex flex-col items-center gap-2 pointer-events-none" style="bottom:calc(1rem + env(safe-area-inset-bottom,0px))"></div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN — edita estos valores o cámbialos desde ⚙️ en la web
+   ===================================================================== */
+const CONFIG = {
+  TOKEN_CA: 'ENfVxYFikLMwtEuu3Sd5sKgrpfG7RozNveBZiw3Ppump',                 // Contract Address del token en Pump.fun (también se puede pegar en la web)
+  TREASURY: '45tLJivuWU3EHd5pRUixWZuy1TYrmkSduwK5XPppsabp',                 // Wallet de la tesorería que recibe depósitos y pagos. Vacío = modo demo
+  RPC: 'https://api.mainnet-beta.solana.com',
+  DEPOSIT_RATE: 100,            // 1 $KULT = 100 KULT-Energy
+  WITHDRAW_FEE: 10,             // % de comisión al retirar
+  SOL_PER_KULT: 0.0005,         // Precio de referencia para pagar con SOL en la tienda
+  WITHDRAW_ENDPOINT: ''         // URL de tu backend que firma y envía los retiros
+};
+
+/* ===================== DATOS DEL JUEGO ===================== */
+const PLANTS = {
+  solis:  { name:'Girasol Solis', rar:'Común', el:'Luz', emoji:'🌻', price:8, yield:300, cycle:120, waterSec:90, harvests:5, drop:34, buy:true, desc:'El primer cultivo de toda granja. Le encanta el sol y perdona los descuidos.' },
+  ignis:  { name:'Ignis Bloom', rar:'Rara', el:'Fuego', emoji:'🌺', price:40, yield:1500, cycle:180, waterSec:60, harvests:5, drop:15, buy:true, desc:'Florece entre brasas. Rinde mucho, pero se seca rápido.' },
+  frost:  { name:'Frost Seed', rar:'Épica', el:'Agua', emoji:'🪻', price:90, yield:3500, cycle:240, waterSec:120, harvests:5, drop:3, buy:true, desc:'Una semilla helada que conserva la humedad por más tiempo.' },
+  noctis: { name:'Noctis Vine', rar:'Épica', el:'Oscuridad', emoji:'🥀', price:0, yield:3000, cycle:200, waterSec:80, harvests:5, drop:2, buy:false, desc:'Solo aparece en las Sun Box. Prefiere la sombra y asusta a las plagas.' },
+  mother: { name:'Árbol Madre Kultivar', rar:'Legendaria', el:'Planta', emoji:'🌳', price:400, yield:18000, cycle:360, waterSec:90, harvests:6, drop:1, buy:true, desc:'El árbol que dio origen a la granja. Tarda en crecer, pero lo compensa.' }
+};
+const PLANT_IDS = Object.keys(PLANTS);
+const RAR_CLASS = { 'Común':'r-comun', 'Rara':'r-rara', 'Épica':'r-epica', 'Legendaria':'r-legendaria' };
+const EL_ICON = { 'Planta':'🌿', 'Fuego':'🔥', 'Agua':'💧', 'Luz':'☀️', 'Oscuridad':'🌑' };
+const ITEMS = {
+  pot:       { name:'Maceta pequeña', icon:'🪴', price:2, desc:'Necesaria para plantar. Se gasta al sembrar.' },
+  water:     { name:'Agua (100 usos)', icon:'💧', price:3, desc:'Cada riego gasta 1 uso.' },
+  scarecrow: { name:'Espantapájaros', icon:'🧑‍🌾', price:4, desc:'Espanta plagas. Trae 5 usos.' },
+  sunbox:    { name:'Sun Box', icon:'🎁', price:20, desc:'Caja sorpresa con herramientas o semillas.' }
+};
+const DROPS = [
+  { w:20, label:'Agua (100 usos)', give:s=>s.inv.water+=100, icon:'💧' },
+  { w:15, label:'2 macetas', give:s=>s.inv.pots+=2, icon:'🪴' },
+  { w:10, label:'Espantapájaros', give:s=>s.inv.scare+=5, icon:'🧑‍🌾' },
+  { w:34, label:'Semilla Girasol Solis', seed:'solis' },
+  { w:15, label:'Semilla Ignis Bloom', seed:'ignis' },
+  { w:3,  label:'Semilla Frost Seed', seed:'frost' },
+  { w:2,  label:'Semilla Noctis Vine', seed:'noctis' },
+  { w:1,  label:'Semilla Árbol Madre', seed:'mother' }
+];
+const UNLOCK = { 6:25, 7:50, 8:100 };
+const PEST_MEAN = 90;       // segundos medios hasta que aparece una plaga
+const PEST_SLOW = 0.4;      // velocidad de crecimiento con plaga
+const PEST_LOSS = 0.3;      // pérdida de cosecha si la plaga sigue allí
+
+/* ===================== ESTADO ===================== */
+const SAVE_KEY = 'kultivar_v1';
+const $ = id => document.getElementById(id);
+const fmt = (n, d=0) => Number(n).toLocaleString('es', { maximumFractionDigits:d });
+const r6 = n => Math.round(n*1e6)/1e6;
+
+function freshState(){
+  return {
+    ca: CONFIG.TOKEN_CA, currency:'KULT', tab:'home', dexFilter:'all',
+    settings:{ treasury:CONFIG.TREASURY, rpc:CONFIG.RPC, depositRate:CONFIG.DEPOSIT_RATE, withdrawFee:CONFIG.WITHDRAW_FEE, solPerKult:CONFIG.SOL_PER_KULT, endpoint:CONFIG.WITHDRAW_ENDPOINT },
+    demo:{ kult:100, sol:2.5 },
+    live:{ ok:false, kult:0, sol:0 },
+    wallet:null, energy:0,
+    inv:{ pots:3, water:100, scare:5, seeds:{ solis:2 } },
+    plots: Array.from({length:9}, (_,i)=>({ unlocked:i<6, plant:null })),
+    log:[], stats:{ harvests:0, energyTotal:0, boxes:0 }, last:Date.now()
+  };
+}
+let S = freshState();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    const f = freshState();
+    S = { ...f, ...d, settings:{...f.settings, ...(d.settings||{})}, inv:{...f.inv, ...(d.inv||{}), seeds:{...(d.inv&&d.inv.seeds||{})}}, demo:{...f.demo, ...(d.demo||{})}, stats:{...f.stats, ...(d.stats||{})}, live:f.live, wallet:null };
+    if(!Array.isArray(S.plots) || S.plots.length!==9) S.plots = f.plots;
+    if(!S.ca) S.ca = CONFIG.TOKEN_CA;
+  }catch(e){ /* sin datos guardados */ }
+}
+function save(){ try{ S.last = Date.now(); const {live, wallet, ...rest} = S; localStorage.setItem(SAVE_KEY, JSON.stringify(rest)); }catch(e){} }
+
+/* ===================== UTILIDADES UI ===================== */
+function toast(msg, err){
+  const t = document.createElement('div'); t.className = 'toast'+(err?' err':''); t.textContent = msg; t.setAttribute('role','status');
+  $('toasts').appendChild(t); setTimeout(()=>t.remove(), 2800);
+}
+function openModal(html){ $('modalBody').innerHTML = html; $('modal').classList.add('open'); }
+function closeModal(){ $('modal').classList.remove('open'); }
+$('modal').addEventListener('click', e=>{ if(e.target===$('modal')) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+function addLog(txt){ S.log.unshift({ t:Date.now(), txt }); S.log = S.log.slice(0,10); }
+const validCA = s => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);
+const shortAddr = a => a ? a.slice(0,4)+'…'+a.slice(-4) : '';
+function mmss(sec){ sec = Math.max(0, Math.ceil(sec)); return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0'); }
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch(e){ try{ const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); const ok=document.execCommand('copy'); ta.remove(); return ok; }catch(_){ return false; } }
+}
+const links = () => S.ca ? {
+  pump:`https://pump.fun/coin/${S.ca}`,
+  raydium:`https://raydium.io/swap/?inputMint=sol&outputMint=${S.ca}`,
+  dex:`https://dexscreener.com/solana/${S.ca}`
+} : null;
+
+/* ===================== BALANCES / CHAIN ===================== */
+function isLive(){ return !!(S.wallet && S.live.ok && S.settings.treasury); }
+function getBal(){ return S.live.ok ? { kult:S.live.kult, sol:S.live.sol, live:true } : { kult:S.demo.kult, sol:S.demo.sol, live:false }; }
+
+const Chain = {
+  _mint:null,
+  async rpc(method, params){
+    const r = await fetch(S.settings.rpc, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ jsonrpc:'2.0', id:1, method, params }) });
+    const j = await r.json(); if(j.error) throw new Error(j.error.message); return j.result;
+  },
+  async mintInfo(){
+    if(this._mint && this._mint.ca===S.ca) return this._mint;
+    const r = await this.rpc('getAccountInfo', [S.ca, { encoding:'jsonParsed' }]);
+    if(!r.value) throw new Error('No se encontró el mint del token');
+    this._mint = { ca:S.ca, program:r.value.owner, decimals:r.value.data.parsed.info.decimals };
+    return this._mint;
+  },
+  async balances(owner){
+    const sol = (await this.rpc('getBalance', [owner])).value/1e9;
+    const res = await this.rpc('getTokenAccountsByOwner', [owner, { mint:S.ca }, { encoding:'jsonParsed' }]);
+    const kult = res.value.reduce((a,x)=>a+(x.account.data.parsed.info.tokenAmount.uiAmount||0), 0);
+    return { sol, kult };
+  },
+  provider(){ const p = window.phantom && window.phantom.solana || window.solana; return p && p.isPhantom ? p : null; },
+  async send(tx){
+    const p = this.provider(); const W = window.solanaWeb3;
+    const bh = await this.rpc('getLatestBlockhash', [{ commitment:'confirmed' }]);
+    tx.recentBlockhash = bh.value.blockhash; tx.feePayer = new W.PublicKey(S.wallet);
+    const { signature } = await p.signAndSendTransaction(tx);
+    return signature;
+  },
+  // Transferencia SPL (soporta Token y Token-2022 detectando el programa del mint)
+  async sendKult(amountUi){
+    const W = window.solanaWeb3; const mi = await this.mintInfo();
+    const mint = new W.PublicKey(S.ca), owner = new W.PublicKey(S.wallet), treasury = new W.PublicKey(S.settings.treasury), prog = new W.PublicKey(mi.program);
+    const ATA = new W.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+    const ata = o => W.PublicKey.findProgramAddressSync([o.toBuffer(), prog.toBuffer(), mint.toBuffer()], ATA)[0];
+    const src = ata(owner), dst = ata(treasury);
+    const k = (pubkey, isSigner, isWritable) => ({ pubkey, isSigner, isWritable });
+    const createDst = new W.TransactionInstruction({ programId:ATA, keys:[k(owner,true,true), k(dst,false,true), k(treasury,false,false), k(mint,false,false), k(W.SystemProgram.programId,false,false), k(prog,false,false)], data:new Uint8Array([1]) });
+    const raw = BigInt(Math.round(amountUi * Math.pow(10, mi.decimals)));
+    const data = new Uint8Array(10); data[0] = 12; new DataView(data.buffer).setBigUint64(1, raw, true); data[9] = mi.decimals;
+    const xfer = new W.TransactionInstruction({ programId:prog, keys:[k(src,false,true), k(mint,false,false), k(dst,false,true), k(owner,true,false)], data });
+    return this.send(new W.Transaction().add(createDst, xfer));
+  },
+  async sendSol(amountSol){
+    const W = window.solanaWeb3;
+    const ix = W.SystemProgram.transfer({ fromPubkey:new W.PublicKey(S.wallet), toPubkey:new W.PublicKey(S.settings.treasury), lamports:Math.round(amountSol*1e9) });
+    return this.send(new W.Transaction().add(ix));
+  }
+};
+
+async function refreshBalances(){
+  S.live.ok = false;
+  if(S.wallet && S.ca){
+    try{ const b = await Chain.balances(S.wallet); S.live = { ok:true, kult:b.kult, sol:b.sol }; }
+    catch(e){ S.live.ok = false; }
+  }
+  renderHeader();
+}
+
+/* ===================== WALLET ===================== */
+async function connectWallet(silent){
+  const p = Chain.provider();
+  if(!p){
+    if(!silent) openModal(`<h3 class="font-display font-bold text-2xl">No encontramos Phantom</h3>
+      <p class="text-[var(--muted)] mt-2">Instala la extensión Phantom o abre esta página dentro de la app de Phantom. Mientras tanto puedes jugar en modo demo sin conectar nada.</p>
+      <div class="flex gap-2 mt-4"><a class="btn btn-sun" href="https://phantom.app/download" target="_blank" rel="noopener noreferrer">Descargar Phantom</a><button class="btn btn-ghost" onclick="closeModal()">Seguir en demo</button></div>`);
+    return;
+  }
+  try{
+    const r = silent ? await p.connect({ onlyIfTrusted:true }) : await p.connect();
+    S.wallet = r.publicKey.toString();
+    p.on && p.on('disconnect', ()=>{ S.wallet=null; S.live.ok=false; renderAll(); });
+    toast('Wallet conectada');
+    await refreshBalances(); renderAll();
+  }catch(e){ if(!silent) toast('No se pudo conectar la wallet', true); }
+}
+async function disconnectWallet(){
+  try{ const p = Chain.provider(); p && await p.disconnect(); }catch(e){}
+  S.wallet = null; S.live.ok = false; renderAll(); toast('Wallet desconectada');
+}
+function onWalletClick(){ S.wallet ? disconnectWallet() : connectWallet(false); }
+
+/* ===================== PAGOS ===================== */
+async function spend(cur, amt, label){
+  const b = getBal();
+  if(cur==='KULT'){
+    if(b.kult < amt-1e-9) throw new Error('No tienes suficiente $KULT');
+    if(isLive()){ await Chain.sendKult(amt); await refreshBalances(); } else S.demo.kult = r6(S.demo.kult-amt);
+  }else{
+    if(b.sol < amt-1e-9) throw new Error('No tienes suficiente SOL');
+    if(isLive()){ await Chain.sendSol(amt); await refreshBalances(); } else S.demo.sol = r6(S.demo.sol-amt);
+  }
+  addLog(`−${fmt(amt,4)} ${cur} · ${label}`);
+}
+const priceIn = (kult, cur) => cur==='KULT' ? kult : r6(kult*S.settings.solPerKult);
+
+/* ===================== LÓGICA DE GRANJA ===================== */
+function stepPlot(p, dt){
+  const pl = p.plant; if(!pl) return; const d = PLANTS[pl.id];
+  if(pl.progress >= d.cycle) return;
+  if(pl.water > 0){
+    const used = Math.min(pl.water, dt);
+    pl.water -= used;
+    pl.progress = Math.min(d.cycle, pl.progress + used*(pl.pest ? PEST_SLOW : 1));
+  }
+  if(!pl.pest && pl.progress < d.cycle && Math.random() < dt/PEST_MEAN) pl.pest = Math.random()<.5 ? 'crow' : 'worm';
+}
+function advance(seconds){
+  let left = seconds; while(left > 0){ const dt = Math.min(left, 2); S.plots.forEach(p=>stepPlot(p, dt)); left -= dt; }
+}
+const isReady = p => p.plant && p.plant.progress >= PLANTS[p.plant.id].cycle;
+
+function plantSeed(i, id){
+  const p = S.plots[i], d = PLANTS[id];
+  if(p.plant) return;
+  if(S.inv.pots < 1){ toast('Necesitas una maceta. Cómprala en la tienda.', true); return; }
+  if(!(S.inv.seeds[id] > 0)){ toast('No tienes esa semilla', true); return; }
+  S.inv.pots--; S.inv.seeds[id]--;
+  p.plant = { id, progress:0, water:0, pest:null, harvestsLeft:d.harvests };
+  closeModal(); toast(`Plantaste ${d.name}. ¡Riégala para que crezca!`); renderAll();
+}
+function waterPlot(i, quiet){
+  const p = S.plots[i], pl = p.plant; if(!pl) return false; const d = PLANTS[pl.id];
+  if(isReady(p)) return false;
+  if(pl.water > d.waterSec*0.9){ if(!quiet) toast('Esa planta ya tiene agua'); return false; }
+  if(S.inv.water < 1){ if(!quiet) toast('Sin agua. Compra más en la tienda.', true); return false; }
+  S.inv.water--; pl.water = d.waterSec; return true;
+}
+function shooPlot(i){
+  const pl = S.plots[i].plant; if(!pl || !pl.pest) return;
+  if(S.inv.scare < 1){ toast('Sin espantapájaros. Compra uno en la tienda.', true); return; }
+  S.inv.scare--; pl.pest = null; toast('¡Plaga espantada!');
+}
+function harvestPlot(i, quiet){
+  const p = S.plots[i], pl = p.plant; if(!pl || !isReady(p)) return 0; const d = PLANTS[pl.id];
+  let amt = d.yield; if(pl.pest) amt = Math.round(amt*(1-PEST_LOSS));
+  S.energy += amt; S.stats.harvests++; S.stats.energyTotal += amt;
+  pl.harvestsLeft--;
+  if(pl.harvestsLeft <= 0){ p.plant = null; if(!quiet) toast(`${d.name} cumplió su vida útil. Siembra otra.`); }
+  else { pl.progress = 0; pl.pest = null; }
+  const w = document.getElementById('plot-'+i);
+  if(w){ const f = document.createElement('div'); f.className='float'; f.textContent = '+'+fmt(amt)+' ⚡'; w.firstElementChild && w.firstElementChild.appendChild(f); setTimeout(()=>f.remove(), 1300); }
+  return amt;
+}
+function waterAll(){
+  let n=0; S.plots.forEach((p,i)=>{ if(p.plant && !isReady(p) && p.plant.water < PLANTS[p.plant.id].waterSec*0.5 && S.inv.water>0 && waterPlot(i,true)) n++; });
+  toast(n ? `Regaste ${n} planta${n>1?'s':''}` : 'Nada que regar ahora', !n); syncAll();
+}
+function harvestAll(){
+  let tot=0; S.plots.forEach((p,i)=>{ tot += harvestPlot(i,true); });
+  toast(tot ? `Cosechaste ${fmt(tot)} ⚡` : 'Aún no hay nada listo', !tot); syncAll();
+}
+
+/* ---- Render de parcelas (actualización parcial para no perder clics) ---- */
+function plotSig(p){
+  if(!p.unlocked) return 'L'; const pl = p.plant; if(!pl) return 'E';
+  const d = PLANTS[pl.id]; const ready = pl.progress>=d.cycle; const st = ready?2:(pl.progress/d.cycle>.34?1:0);
+  return [pl.id, ready, st, pl.pest, pl.water>0, pl.harvestsLeft, S.inv.water>0, S.inv.scare>0].join('|');
+}
+function plotHTML(i){
+  const p = S.plots[i];
+  if(!p.unlocked) return `<div class="plot locked"><div class="text-4xl" aria-hidden="true">🔒</div><div class="font-bold">Parcela bloqueada</div><button class="btn btn-sun btn-sm" data-act="unlock" data-i="${i}">Desbloquear · ${UNLOCK[i]} $KULT</button></div>`;
+  if(!p.plant) return `<div class="plot empty"><div class="text-5xl opacity-50" aria-hidden="true">🕳️</div><div class="text-[var(--muted)] font-bold">Tierra lista</div><button class="btn btn-leaf" data-act="plant" data-i="${i}">Plantar</button></div>`;
+  const pl = p.plant, d = PLANTS[pl.id], ready = pl.progress>=d.cycle, st = ready?2:(pl.progress/d.cycle>.34?1:0);
+  const emoji = st===2 ? d.emoji : (st===1 ? '🌿' : '🌱');
+  const dry = pl.water<=0 && !ready;
+  const pestE = pl.pest==='crow' ? '🐦‍⬛' : '🐛';
+  const act = ready
+    ? `<button class="btn btn-sun ready-pulse w-full" data-act="harvest" data-i="${i}">Cosechar ⚡ ${fmt(pl.pest?Math.round(d.yield*(1-PEST_LOSS)):d.yield)}</button>`
+    : '';
+  return `<div class="plot ${ready?'ready':''}">
+    <span class="rar ${RAR_CLASS[d.rar]} absolute top-2 left-2 text-[.7rem]" style="background:rgba(0,0,0,.35)">${d.name}</span>
+    ${pl.pest?`<span class="pest" title="Plaga: reduce el crecimiento y la cosecha">${pestE}</span>`:''}
+    <div class="plant s${st} el-${d.el.toLowerCase()}" aria-hidden="true">${emoji}</div>
+    <div class="w-full text-xs font-bold flex justify-between"><span id="pt-${i}"></span><span class="text-[var(--muted)]">${pl.harvestsLeft} cosecha${pl.harvestsLeft!==1?'s':''}</span></div>
+    <div class="bar g" title="Crecimiento"><i id="pg-${i}"></i></div>
+    <div class="bar w" title="Agua"><i id="pw-${i}"></i></div>
+    ${dry?'<div class="text-xs font-bold" style="color:var(--water)">Sin agua: crecimiento en pausa</div>':''}
+    ${act || `<div class="flex gap-1 w-full"><button class="btn btn-water btn-sm flex-1" data-act="water" data-i="${i}">💧 Regar</button><button class="btn btn-ghost btn-sm flex-1 ${pl.pest?'':'off'}" data-act="shoo" data-i="${i}" ${pl.pest?'':'disabled'}>🪶 Espantar</button></div>`}
+  </div>`;
+}
+function updateBars(i){
+  const pl = S.plots[i].plant; if(!pl) return; const d = PLANTS[pl.id];
+  const g=$('pg-'+i), w=$('pw-'+i), t=$('pt-'+i);
+  if(g) g.style.width = Math.min(100, pl.progress/d.cycle*100)+'%';
+  if(w) w.style.width = Math.min(100, pl.water/d.waterSec*100)+'%';
+  if(t){ const ready = pl.progress>=d.cycle; t.textContent = ready ? '¡Lista!' : (pl.water>0 ? '⏳ '+mmss((d.cycle-pl.progress)/(pl.pest?PEST_SLOW:1)) : '⏳ en pausa'); }
+}
+function syncFarm(){
+  const grid = $('farmGrid');
+  if(!grid.children.length){
+    S.plots.forEach((_,i)=>{ const w=document.createElement('div'); w.id='plot-'+i; grid.appendChild(w); });
+  }
+  S.plots.forEach((p,i)=>{
+    const w = $('plot-'+i), s = plotSig(p);
+    if(w.dataset.sig !== s){ w.innerHTML = plotHTML(i); w.dataset.sig = s; }
+    updateBars(i);
+  });
+  $('quickInv').innerHTML = `
+    <li>🪴 Macetas: <b>${fmt(S.inv.pots)}</b></li>
+    <li>💧 Agua: <b>${fmt(S.inv.water)}</b> usos</li>
+    <li>🧑‍🌾 Espantapájaros: <b>${fmt(S.inv.scare)}</b> usos</li>
+    <li>🌰 Semillas: <b>${fmt(Object.values(S.inv.seeds).reduce((a,b)=>a+b,0))}</b></li>`;
+}
+$('farmGrid').addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]'); if(!b || b.disabled) return;
+  const i = +b.dataset.i, act = b.dataset.act;
+  if(act==='plant') openPlantModal(i);
+  else if(act==='water'){ if(waterPlot(i)) syncAll(); }
+  else if(act==='shoo'){ shooPlot(i); syncAll(); }
+  else if(act==='harvest'){ harvestPlot(i); syncAll(); }
+  else if(act==='unlock') unlockPlot(i);
+});
+async function unlockPlot(i){
+  try{ await spend('KULT', UNLOCK[i], 'Parcela nueva'); S.plots[i].unlocked = true; toast('¡Parcela desbloqueada!'); renderAll(); }
+  catch(e){ toast(e.message||'No se pudo pagar', true); }
+}
+function openPlantModal(i){
+  const owned = PLANT_IDS.filter(id=>S.inv.seeds[id]>0);
+  let body;
+  if(!owned.length) body = `<p class="text-[var(--muted)] mt-3">No tienes semillas sin plantar. Compra una en la tienda o prueba suerte con una Sun Box.</p><button class="btn btn-leaf mt-4" onclick="closeModal();showTab('shop')">Ir a la tienda</button>`;
+  else body = `<p class="text-[var(--muted)] mt-1 mb-3">Cada siembra gasta 1 maceta (tienes ${S.inv.pots}) y 1 semilla.</p><div class="space-y-2">` +
+    owned.map(id=>{ const d=PLANTS[id]; return `<div class="card ${RAR_CLASS[d.rar]} flex items-center gap-3"><div class="text-4xl" aria-hidden="true">${d.emoji}</div><div class="flex-1"><div class="font-display font-bold text-lg leading-tight">${d.name}</div><div class="text-sm text-[var(--muted)]">${d.rar} · ${EL_ICON[d.el]} ${d.el} · tienes ${S.inv.seeds[id]}</div></div><button class="btn btn-leaf btn-sm" onclick="plantSeed(${i},'${id}')">Plantar</button></div>`; }).join('') + `</div>`;
+  openModal(`<div class="flex justify-between items-start"><h3 class="font-display font-bold text-2xl">Elige una semilla</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()" aria-label="Cerrar">✕</button></div>${body}`);
+}
+
+/* ===================== TIENDA ===================== */
+function setCurrency(c){ S.currency = c; renderShop(); save(); }
+function priceLabel(k){ const p = priceIn(k, S.currency); return S.currency==='KULT' ? `${fmt(p,2)} $KULT` : `◎ ${fmt(p,5)}`; }
+function shopCard(key, o, extra=''){
+  return `<div class="card ${o.rc||''} flex flex-col gap-2"><div class="flex items-center gap-3"><div class="text-4xl" aria-hidden="true">${o.icon}</div><div><div class="font-display font-bold text-lg leading-tight">${o.name}</div>${o.badge||''}</div></div><p class="text-sm text-[var(--muted)] flex-1">${o.desc}</p>${extra}<button class="btn btn-sun mt-1" onclick="buy('${key}')">Comprar · ${priceLabel(o.price)}</button></div>`;
+}
+function renderShop(){
+  $('curKULT').className = 'btn btn-sm '+(S.currency==='KULT'?'btn-leaf':'btn-ghost');
+  $('curSOL').className  = 'btn btn-sm '+(S.currency==='SOL'?'btn-leaf':'btn-ghost');
+  $('shopSupplies').innerHTML = ['pot','water','scarecrow'].map(k=>shopCard(k, ITEMS[k])).join('') + '';
+  const sb = ITEMS.sunbox;
+  $('shopBox').innerHTML = `<div class="panel p-5 grid md:grid-cols-[1fr_1.2fr] gap-5 items-center">
+    <div class="text-center"><div class="text-7xl" aria-hidden="true">🎁</div><h4 class="font-display font-bold text-2xl">${sb.name}</h4><p class="text-[var(--muted)]">${sb.desc}</p><button class="btn btn-sun mt-3" onclick="buy('sunbox')">Abrir una · ${priceLabel(sb.price)}</button></div>
+    <div><div class="font-bold mb-1">Probabilidades</div><ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">${DROPS.map(d=>`<li class="flex justify-between gap-2"><span>${d.label}</span><b>${d.w}%</b></li>`).join('')}</ul></div></div>`;
+  $('shopSeeds').innerHTML = PLANT_IDS.filter(id=>PLANTS[id].buy).map(id=>{ const d=PLANTS[id];
+    return shopCard('seed:'+id, { icon:d.emoji, name:d.name, price:d.price, rc:RAR_CLASS[d.rar], badge:`<span class="rar ${RAR_CLASS[d.rar]}">${d.rar}</span>`, desc:`${EL_ICON[d.el]} ${d.el} · ${fmt(d.yield)} ⚡ por cosecha, ${d.harvests} cosechas.` }, `<div class="text-sm">En tu mochila: <b>${S.inv.seeds[id]||0}</b></div>`); }).join('');
+}
+async function buy(key){
+  let o, label;
+  if(key.startsWith('seed:')){ const id = key.slice(5); o = PLANTS[id]; label = o.name; } else { o = ITEMS[key]; label = o.name; }
+  try{
+    await spend(S.currency, priceIn(o.price, S.currency), label);
+    if(key==='pot') S.inv.pots++;
+    else if(key==='water') S.inv.water += 100;
+    else if(key==='scarecrow') S.inv.scare += 5;
+    else if(key==='sunbox') { openBox(); return; }
+    else { const id=key.slice(5); S.inv.seeds[id] = (S.inv.seeds[id]||0)+1; }
+    toast(`Compraste: ${label}`); renderAll();
+  }catch(e){ toast(e.message || 'No se pudo completar la compra', true); }
+}
+function openBox(){
+  S.stats.boxes++;
+  const total = DROPS.reduce((a,d)=>a+d.w,0); let r = Math.random()*total, win = DROPS[0];
+  for(const d of DROPS){ if((r-=d.w) < 0){ win = d; break; } }
+  if(win.seed) S.inv.seeds[win.seed] = (S.inv.seeds[win.seed]||0)+1; else win.give(S.inv);
+  const icon = win.seed ? PLANTS[win.seed].emoji : win.icon;
+  const rar = win.seed ? PLANTS[win.seed].rar : 'Común';
+  openModal(`<div class="text-center py-4"><div id="boxIcon" class="text-8xl shake" aria-hidden="true">🎁</div><p class="font-display font-bold text-2xl mt-3" id="boxTxt">Abriendo…</p></div>`);
+  renderAll();
+  setTimeout(()=>{
+    const ic=$('boxIcon'), tx=$('boxTxt'); if(!ic) return;
+    ic.classList.remove('shake'); ic.textContent = icon; ic.classList.add('bump');
+    tx.innerHTML = `¡Te tocó ${win.label}!<br><span class="rar ${RAR_CLASS[rar]}">${rar}</span>`;
+    $('modalBody').insertAdjacentHTML('beforeend', `<div class="flex gap-2 justify-center mt-2"><button class="btn btn-ghost" onclick="closeModal()">Cerrar</button><button class="btn btn-sun" onclick="closeModal();buy('sunbox')">Abrir otra</button></div>`);
+  }, 1300);
+}
+
+/* ===================== KULTIVARDEX ===================== */
+function renderDex(){
+  const rars = ['all','Común','Rara','Épica','Legendaria'];
+  $('dexFilters').innerHTML = rars.map(r=>`<button class="btn btn-sm ${S.dexFilter===r?'btn-leaf':'btn-ghost'}" onclick="S.dexFilter='${r}';renderDex()">${r==='all'?'Todas':r}</button>`).join('');
+  const perH = id => PLANTS[id].yield*3600/PLANTS[id].cycle;
+  const mx = { h:Math.max(...PLANT_IDS.map(perH)), c:Math.max(...PLANT_IDS.map(i=>PLANTS[i].cycle)), w:Math.max(...PLANT_IDS.map(i=>PLANTS[i].waterSec)), d:Math.max(...PLANT_IDS.map(i=>PLANTS[i].drop)) };
+  const row = (label, val, pct, color) => `<div><div class="flex justify-between text-sm"><span>${label}</span><b>${val}</b></div><div class="bar" style="margin-top:.2rem"><i style="width:${Math.max(4,pct)}%;background:${color}"></i></div></div>`;
+  $('dexGrid').innerHTML = PLANT_IDS.filter(id=>S.dexFilter==='all'||PLANTS[id].rar===S.dexFilter).map(id=>{ const d=PLANTS[id];
+    return `<article class="card ${RAR_CLASS[d.rar]} flex flex-col gap-3">
+      <div class="flex items-center gap-3"><div class="text-6xl plant el-${d.el.toLowerCase()}" style="margin:0;animation:none" aria-hidden="true">${d.emoji}</div>
+        <div><h3 class="font-display font-bold text-xl leading-tight">${d.name}</h3><div class="flex flex-wrap gap-1 mt-1"><span class="rar">${d.rar}</span><span class="chip" style="padding:.05rem .55rem;font-size:.78rem">${EL_ICON[d.el]} ${d.el}</span></div></div></div>
+      <p class="text-sm text-[var(--muted)]">${d.desc}</p>
+      <div class="space-y-2">
+        ${row('Energía por hora','≈ '+fmt(perH(id))+' ⚡', perH(id)/mx.h*100, 'linear-gradient(90deg,#f7c948,#ffdf8a)')}
+        ${row('Duración del ciclo', mmss(d.cycle)+' min', d.cycle/mx.c*100, 'linear-gradient(90deg,#7fd44e,#c6e65b)')}
+        ${row('Agua: dura '+d.waterSec+' s', Math.ceil(d.cycle/d.waterSec)+' riegos por ciclo', d.waterSec/mx.w*100, 'linear-gradient(90deg,#3a8ed8,#7fcaff)')}
+        ${row('Probabilidad en Sun Box', d.drop+'%', d.drop/mx.d*100, 'linear-gradient(90deg,#bb82ff,#e0c2ff)')}
+      </div>
+      <div class="text-sm text-[var(--muted)]">${fmt(d.yield)} ⚡ por cosecha · ${d.harvests} cosechas de vida útil</div>
+      ${d.buy?`<button class="btn btn-sun btn-sm" onclick="showTab('shop')">Ver en tienda · ${fmt(d.price)} $KULT</button>`:`<div class="text-sm font-bold" style="color:var(--r-epica)">Solo en Sun Box</div>`}
+    </article>`; }).join('');
+}
+
+/* ===================== BANCO ===================== */
+function renderBank(){
+  const st = S.settings;
+  $('rateLine').textContent = `Tasa: 1 $KULT = ${fmt(st.depositRate)} KULT-Energy. Retiro con comisión del ${fmt(st.withdrawFee,2)}%.`;
+  $('witFee').textContent = `(comisión ${fmt(st.withdrawFee,2)}%)`;
+  updBankPreview();
+  $('logList').innerHTML = S.log.length ? S.log.map(l=>`<li>${new Date(l.t).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})} · ${l.txt}</li>`).join('') : '<li>Todavía no hay movimientos. Tu primer depósito aparecerá aquí.</li>';
+}
+function updBankPreview(){
+  const d = parseFloat($('depAmt').value)||0, w = parseFloat($('witAmt').value)||0, st = S.settings;
+  $('depOut').textContent = fmt(d*st.depositRate, 2);
+  $('witOut').textContent = fmt(w/st.depositRate*(1-st.withdrawFee/100), 4);
+}
+$('depAmt').addEventListener('input', updBankPreview); $('witAmt').addEventListener('input', updBankPreview);
+function maxDeposit(){ $('depAmt').value = getBal().kult; updBankPreview(); }
+function maxWithdraw(){ $('witAmt').value = Math.floor(S.energy); updBankPreview(); }
+async function doDeposit(){
+  const v = parseFloat($('depAmt').value);
+  if(!(v>0)) return toast('Escribe una cantidad mayor a 0', true);
+  try{ await spend('KULT', v, 'Depósito a KULT-Energy'); S.energy += v*S.settings.depositRate; $('depAmt').value=''; toast(`Recibiste ${fmt(v*S.settings.depositRate)} ⚡`); renderAll(); }
+  catch(e){ toast(e.message||'No se pudo depositar', true); }
+}
+async function doWithdraw(){
+  const e = parseFloat($('witAmt').value), st = S.settings;
+  if(!(e>0)) return toast('Escribe una cantidad mayor a 0', true);
+  if(e > S.energy) return toast('No tienes tanta KULT-Energy', true);
+  const net = r6(e/st.depositRate*(1-st.withdrawFee/100));
+  try{
+    if(isLive()){
+      if(!st.endpoint) throw new Error('Falta configurar el endpoint de retiros (WITHDRAW_ENDPOINT)');
+      const p = Chain.provider(); const msg = `Kultivar retiro ${e} ${Date.now()}`;
+      const sig = await p.signMessage(new TextEncoder().encode(msg), 'utf8');
+      const res = await fetch(st.endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ wallet:S.wallet, energy:e, message:msg, signature:Array.from(sig.signature||sig) }) });
+      if(!res.ok) throw new Error('El servidor rechazó el retiro');
+      await refreshBalances();
+    } else S.demo.kult = r6(S.demo.kult + net);
+    S.energy -= e; addLog(`+${fmt(net,4)} $KULT · Retiro de ${fmt(e)} ⚡`); $('witAmt').value=''; toast(`Retiraste ${fmt(net,4)} $KULT`); renderAll();
+  }catch(err){ toast(err.message||'No se pudo retirar', true); }
+}
+
+/* ===================== INVENTARIO ===================== */
+function renderInv(){
+  const tool = (icon, name, val, unit) => `<div class="panel p-4 text-center"><div class="text-5xl" aria-hidden="true">${icon}</div><div class="font-display font-bold text-3xl mt-1">${fmt(val)}</div><div class="text-[var(--muted)]">${name}${unit?' · '+unit:''}</div></div>`;
+  $('invTools').innerHTML = tool('🪴','Macetas',S.inv.pots) + tool('💧','Agua',S.inv.water,'usos') + tool('🧑‍🌾','Espantapájaros',S.inv.scare,'usos');
+  const owned = PLANT_IDS.filter(id=>S.inv.seeds[id]>0);
+  $('invSeeds').innerHTML = owned.length ? owned.map(id=>{ const d=PLANTS[id]; return `<div class="card ${RAR_CLASS[d.rar]} flex items-center gap-3"><div class="text-5xl" aria-hidden="true">${d.emoji}</div><div class="flex-1"><div class="font-display font-bold text-lg leading-tight">${d.name}</div><div class="text-sm text-[var(--muted)]">${d.rar} · x${S.inv.seeds[id]}</div></div><button class="btn btn-leaf btn-sm" onclick="showTab('farm')">Plantar</button></div>`; }).join('')
+    : `<div class="panel p-5 col-span-full"><p class="text-[var(--muted)]">No tienes semillas sin plantar.</p><button class="btn btn-leaf btn-sm mt-3" onclick="showTab('shop')">Comprar semillas</button></div>`;
+  const stat = (l,v) => `<div class="panel p-4"><div class="text-[var(--muted)]">${l}</div><div class="font-display font-bold text-3xl">${v}</div></div>`;
+  $('invStats').innerHTML = stat('Cosechas realizadas', fmt(S.stats.harvests)) + stat('Energía cosechada en total', fmt(S.stats.energyTotal)+' ⚡') + stat('Sun Box abiertas', fmt(S.stats.boxes));
+}
+
+/* ===================== HEADER / CA / GRÁFICO ===================== */
+function setNum(id, v){ const el = $(id); const t = v; if(el.textContent !== t){ el.textContent = t; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } }
+function renderHeader(){
+  const b = getBal();
+  setNum('balKult', fmt(b.kult, 2)); setNum('balEnergy', fmt(S.energy)); setNum('balSol', fmt(b.sol, 4));
+  const dot = $('dotKult'); dot.className = 'dot'+(b.live?' live':''); dot.title = b.live ? 'Saldo real de tu wallet' : 'Saldo de demostración';
+  const wb = $('walletBtn'); wb.textContent = S.wallet ? shortAddr(S.wallet)+' · Salir' : 'Conectar wallet';
+}
+function renderCA(){
+  const box = $('caStrip'), L = links();
+  if(!S.ca){
+    box.innerHTML = `<div class="flex flex-wrap items-center gap-2"><label for="caInput" class="font-bold text-sm text-[var(--muted)]">Contrato</label>
+      <input id="caInput" class="input" style="max-width:26rem; padding:.35rem .7rem" placeholder="Pega la Contract Address de Pump.fun" autocomplete="off" spellcheck="false">
+      <button class="btn btn-leaf btn-sm" onclick="saveCAFromStrip()">Guardar CA</button></div>`;
+  }else{
+    const a = (href, txt) => `<a class="btn btn-ghost btn-sm" href="${href}" target="_blank" rel="noopener noreferrer">${txt}</a>`;
+    box.innerHTML = `<div class="flex flex-wrap items-center gap-2"><span class="font-bold text-sm text-[var(--muted)]">CA</span>
+      <code class="chip" style="font-family:ui-monospace,monospace" title="${S.ca}">${shortAddr(S.ca)}</code>
+      <button class="btn btn-sun btn-sm" onclick="copyCA()">Copiar CA</button>${a(L.pump,'Pump.fun')}${a(L.raydium,'Raydium')}${a(L.dex,'DexScreener')}
+      <button class="btn btn-ghost btn-sm" onclick="openSettings()">Editar</button></div>`;
+  }
+  const buy = $('buyHero'); if(L){ buy.href = L.pump; buy.classList.remove('off'); } else { buy.href = '#'; buy.classList.add('off'); buy.onclick = e=>{ e.preventDefault(); toast('Pega primero la CA del token en la barra de contrato', true); }; }
+}
+async function copyCA(){ toast((await copyText(S.ca)) ? 'CA copiada' : 'No se pudo copiar. Cópiala a mano.', false); }
+function saveCAFromStrip(){ setCA(($('caInput').value||'').trim()); }
+function setCA(v){
+  if(!validCA(v)) return toast('Esa dirección no parece válida. Revisa que esté completa.', true);
+  S.ca = v; Chain._mint = null; save(); renderAll(); refreshBalances(); toast('Contrato guardado');
+}
+let chartCA = null;
+function renderCharts(force){
+  if(chartCA === S.ca && !force) return; chartCA = S.ca;
+  const html = !S.ca
+    ? `<div class="panel p-8 text-center"><div class="text-5xl" aria-hidden="true">📈</div><p class="font-display font-bold text-xl mt-2">El gráfico aparece cuando guardes la CA</p><p class="text-[var(--muted)]">Pega la Contract Address del token en la barra de arriba.</p></div>`
+    : `<div class="panel overflow-hidden" style="padding:0"><iframe title="Gráfico de $KULT en DexScreener" src="https://dexscreener.com/solana/${S.ca}?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartTheme=dark&theme=dark&chartStyle=1&chartType=usd&interval=15" style="width:100%; height:32rem; border:0" loading="lazy"></iframe></div>
+       <p class="text-sm text-[var(--muted)] mt-2">¿No carga el gráfico? <a class="underline" href="${links().dex}" target="_blank" rel="noopener noreferrer">Ábrelo en DexScreener</a>. Los tokens recién creados pueden tardar unos minutos en aparecer.</p>`;
+  $('chartHome').innerHTML = html; $('chartBank').innerHTML = html;
+}
+
+/* ===================== AJUSTES ===================== */
+function openSettings(){
+  const s = S.settings;
+  openModal(`<div class="flex justify-between items-start"><h3 class="font-display font-bold text-2xl">Configuración</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()" aria-label="Cerrar">✕</button></div>
+  <div class="space-y-3 mt-3">
+    <div><label class="lbl" for="sCA">Contract Address del token (Pump.fun)</label><input id="sCA" class="input" value="${S.ca}" placeholder="Pega la CA" spellcheck="false"></div>
+    <div><label class="lbl" for="sTre">Wallet de tesorería (recibe pagos y depósitos)</label><input id="sTre" class="input" value="${s.treasury}" placeholder="Vacío = modo demo" spellcheck="false"></div>
+    <div><label class="lbl" for="sRpc">RPC de Solana</label><input id="sRpc" class="input" value="${s.rpc}"></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="lbl" for="sRate">KULT-Energy por 1 $KULT</label><input id="sRate" class="input" type="number" min="1" value="${s.depositRate}"></div>
+      <div><label class="lbl" for="sFee">Comisión de retiro (%)</label><input id="sFee" class="input" type="number" min="0" max="100" value="${s.withdrawFee}"></div>
+    </div>
+    <div><label class="lbl" for="sSol">Precio en SOL de 1 $KULT</label><input id="sSol" class="input" type="number" min="0" step="any" value="${s.solPerKult}"></div>
+    <div><label class="lbl" for="sEnd">Endpoint de retiros (tu backend)</label><input id="sEnd" class="input" value="${s.endpoint}" placeholder="https://…/withdraw"></div>
+    <p class="text-sm text-[var(--muted)]">Con wallet conectada, CA y tesorería, la tienda y el banco usan transacciones reales. Sin eso, todo funciona con saldos de demostración.</p>
+    <div class="flex flex-wrap gap-2"><button class="btn btn-leaf" onclick="saveSettings()">Guardar</button><button class="btn btn-ghost" id="resetBtn" onclick="resetGame()">Reiniciar partida demo</button></div>
+  </div>`);
+}
+function saveSettings(){
+  const ca = $('sCA').value.trim();
+  if(ca && !validCA(ca)) return toast('La CA no parece válida', true);
+  const tre = $('sTre').value.trim(); if(tre && !validCA(tre)) return toast('La wallet de tesorería no parece válida', true);
+  S.ca = ca; Chain._mint = null;
+  Object.assign(S.settings, { treasury:tre, rpc:$('sRpc').value.trim()||CONFIG.RPC, depositRate:Math.max(1,parseFloat($('sRate').value)||100), withdrawFee:Math.min(100,Math.max(0,parseFloat($('sFee').value)||0)), solPerKult:Math.max(0,parseFloat($('sSol').value)||0), endpoint:$('sEnd').value.trim() });
+  save(); closeModal(); renderAll(); refreshBalances(); toast('Configuración guardada');
+}
+function resetGame(){
+  const b = $('resetBtn');
+  if(b.dataset.sure!=='1'){ b.dataset.sure='1'; b.textContent='Toca otra vez para confirmar'; return; }
+  const keep = { ca:S.ca, settings:S.settings, wallet:S.wallet };
+  S = freshState(); S.ca = keep.ca; S.settings = keep.settings; S.wallet = keep.wallet;
+  $('farmGrid').innerHTML=''; save(); closeModal(); renderAll(); toast('Partida reiniciada');
+}
+
+/* ===================== NAVEGACIÓN ===================== */
+const TABS = [['home','Inicio'],['farm','Mi granja'],['shop','Tienda'],['dex','Kultivardex'],['bank','Banco'],['inv','Inventario']];
+function renderTabs(){
+  $('tabs').innerHTML = TABS.map(([k,l])=>`<button class="tab" role="tab" id="t-${k}" aria-selected="${S.tab===k}" onclick="showTab('${k}')">${l}</button>`).join('');
+}
+function showTab(k){
+  S.tab = k;
+  TABS.forEach(([t])=>{ $('tab-'+t).hidden = t!==k; });
+  renderTabs(); renderAll(); window.scrollTo({ top:0 });
+}
+function renderAll(){
+  renderHeader(); renderCA(); renderCharts();
+  if(S.tab==='farm') syncFarm();
+  if(S.tab==='shop') renderShop();
+  if(S.tab==='dex') renderDex();
+  if(S.tab==='bank') renderBank();
+  if(S.tab==='inv') renderInv();
+  save();
+}
+function syncAll(){ renderHeader(); if(S.tab==='farm') syncFarm(); save(); }
+
+/* ===================== ARRANQUE ===================== */
+load();
+// Progreso mientras estuviste fuera (máx. 6 h)
+advance(Math.min(6*3600, Math.max(0, (Date.now()-S.last)/1000)));
+S.last = Date.now();
+renderTabs(); showTab(S.tab || 'home');
+let lastTick = Date.now();
+setInterval(()=>{
+  const now = Date.now(), dt = Math.min(5, (now-lastTick)/1000); lastTick = now;
+  advance(dt);
+  if(S.tab==='farm') syncFarm();
+  if(Math.floor(now/5000) !== Math.floor((now-1000)/5000)) save();
+}, 1000);
+connectWallet(true);   // reconecta en silencio si ya diste permiso a Phantom
+setInterval(()=>{ if(S.wallet && S.ca) refreshBalances(); }, 30000);
+</script>
+</body>
+</html>
